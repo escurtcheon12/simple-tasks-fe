@@ -9,9 +9,15 @@ function App() {
     const [currentPage, setCurrentPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
 
-    // State for Edit Modal
+    const [showAlert, setShowAlert] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+    const [alertVariant, setAlertVariant] = useState('success');
+
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [newProduct, setNewProduct] = useState({ name: '', price: '', stock: '', description: '' });
 
     useEffect(() => {
         fetchProducts(currentPage);
@@ -20,7 +26,7 @@ function App() {
     const fetchProducts = async (page) => {
         setLoading(true);
         try {
-            const response = await axios.get(`http://127.0.0.1:8000/api/products?page=${page}`);
+            const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/products?page=${page}`);
             setProducts(response.data.data);
             setCurrentPage(response.data.current_page);
             setLastPage(response.data.last_page);
@@ -30,34 +36,38 @@ function App() {
             setLoading(false);
         }
     };
-
     const handleSyncProducts = async () => {
+        setLoading(true);
         try {
-            await axios.post('http://127.0.0.1:8000/api/sync-products');
-            alert('Products synced successfully!');
-            fetchProducts(currentPage); // Refresh products after sync
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/sync-products`);
+            displayAlert('Products synced successfully!', 'success');
+            fetchProducts(currentPage);
         } catch (err) {
-            alert('Failed to sync products.');
+            displayAlert('Failed to sync products.', 'danger');
             console.error(err);
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleDeleteProduct = async (id) => {
         if (window.confirm('Are you sure you want to delete this product?')) {
+            setLoading(true);
             try {
-                await axios.delete(`http://127.0.0.1:8000/api/products/${id}`);
-                alert('Product deleted successfully!');
-                fetchProducts(currentPage); // Refresh products after deletion
+                await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/api/products/${id}`);
+                displayAlert('Product deleted successfully!', 'success');
+                fetchProducts(currentPage);
             } catch (err) {
-                alert('Failed to delete product.');
+                displayAlert('Failed to delete product.', 'danger');
                 console.error(err);
+            } finally {
+                setLoading(false);
             }
         }
     };
 
-    // Edit Modal Handlers
     const handleEditClick = (product) => {
-        setEditingProduct({ ...product }); // Create a copy to edit
+        setEditingProduct({ ...product });
         setShowEditModal(true);
     };
 
@@ -72,15 +82,41 @@ function App() {
     };
 
     const handleUpdateProduct = async () => {
+        setLoading(true);
         try {
-            await axios.put(`http://127.0.0.1:8000/api/products/${editingProduct.id}`, editingProduct);
-            alert('Product updated successfully!');
+            await axios.put(`${import.meta.env.VITE_API_BASE_URL}/api/products/${editingProduct.id}`, editingProduct);
+            displayAlert('Product updated successfully!', 'success');
             handleCloseEditModal();
-            fetchProducts(currentPage); // Refresh products after update
+            fetchProducts(currentPage);
         } catch (err) {
-            alert('Failed to update product.');
+            displayAlert('Failed to update product.', 'danger');
             console.error(err);
+        } finally {
+            setLoading(false);
         }
+    };
+
+    const handleCreateProduct = async () => {
+        setLoading(true);
+        try {
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/products`, newProduct);
+            displayAlert('Product created successfully!', 'success');
+            setShowCreateModal(false);
+            setNewProduct({ name: '', price: '', stock: '', description: '' });
+            fetchProducts(currentPage);
+        } catch (err) {
+            displayAlert('Failed to create product.', 'danger');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const displayAlert = (message, variant = 'success') => {
+        setAlertMessage(message);
+        setAlertVariant(variant);
+        setShowAlert(true);
+        setTimeout(() => setShowAlert(false), 3000);
     };
 
     if (loading) return <Container className="mt-4">Loading products...</Container>;
@@ -88,9 +124,17 @@ function App() {
 
     return (
         <Container className="mt-4">
+            {showAlert && (
+                <Alert variant={alertVariant} onClose={() => setShowAlert(false)} dismissible>
+                    {alertMessage}
+                </Alert>
+            )}
             <h1 className="mb-4">Product Dashboard</h1>
-            <Button variant="primary" onClick={handleSyncProducts} className="mb-4">
+            <Button variant="primary" onClick={handleSyncProducts} className="mb-4 me-2" disabled={loading}>
                 Sync Products
+            </Button>
+            <Button variant="success" onClick={() => setShowCreateModal(true)} className="mb-4" disabled={loading}>
+                Create Product
             </Button>
 
             <Table striped bordered hover responsive>
@@ -109,12 +153,12 @@ function App() {
                         <tr key={product.id}>
                             <td>{(currentPage - 1) * 10 + index + 1}</td>
                             <td>{product.name}</td>
-                            <td>${product.price}</td>
+                            <td>Rp. {product.price}</td>
                             <td>{product.stock}</td>
                             <td>{product.description}</td>
                             <td className='d-flex h-100 align-items-center justify-content-center'>
-                                <Button variant="info" size="sm" className="me-2" onClick={() => handleEditClick(product)}>Edit</Button>
-                                <Button variant="danger" size="sm" onClick={() => handleDeleteProduct(product.id)}>Delete</Button>
+                                <Button variant="info" size="sm" className="me-2" onClick={() => handleEditClick(product)} disabled={loading}>Edit</Button>
+                                <Button variant="danger" size="sm" onClick={() => handleDeleteProduct(product.id)} disabled={loading}>Delete</Button>
                             </td>
                         </tr>
                     ))}
@@ -127,13 +171,13 @@ function App() {
                         key={page}
                         active={page === currentPage}
                         onClick={() => setCurrentPage(page)}
+                        disabled={loading}
                     >
                         {page}
                     </Pagination.Item>
                 ))}
             </Pagination>
 
-            {/* Edit Product Modal */}
             <Modal show={showEditModal} onHide={handleCloseEditModal}>
                 <Modal.Header closeButton>
                     <Modal.Title>Edit Product</Modal.Title>
@@ -185,8 +229,63 @@ function App() {
                     <Button variant="secondary" onClick={handleCloseEditModal}>
                         Close
                     </Button>
-                    <Button variant="primary" onClick={handleUpdateProduct}>
+                    <Button variant="primary" onClick={handleUpdateProduct} disabled={loading}>
                         Save Changes
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Create New Product</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Name</Form.Label>
+                            <Form.Control
+                                type="text"
+                                name="name"
+                                value={newProduct.name}
+                                onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                            />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Price</Form.Label>
+                            <Form.Control
+                                type="number"
+                                name="price"
+                                value={newProduct.price}
+                                onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                            />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Stock</Form.Label>
+                            <Form.Control
+                                type="number"
+                                name="stock"
+                                value={newProduct.stock}
+                                onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                            />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Description</Form.Label>
+                            <Form.Control
+                                as="textarea"
+                                name="description"
+                                rows={3}
+                                value={newProduct.description}
+                                onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                            />
+                        </Form.Group>
+                    </Form>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
+                        Close
+                    </Button>
+                    <Button variant="primary" onClick={handleCreateProduct} disabled={loading}>
+                        Create Product
                     </Button>
                 </Modal.Footer>
             </Modal>
