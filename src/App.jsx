@@ -26,7 +26,12 @@ function App() {
     const fetchProducts = async (page) => {
         setLoading(true);
         try {
-            const response = await axios.get(`https://simple-tasks-be-production.up.railway.app/api/products?page=${page}`);
+            const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/products?page=${page}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                }
+            });
             setProducts(response.data.data);
             setCurrentPage(response.data.current_page);
             setLastPage(response.data.last_page);
@@ -39,7 +44,12 @@ function App() {
     const handleSyncProducts = async () => {
         setLoading(true);
         try {
-            await axios.post(`https://simple-tasks-be-production.up.railway.app/api/sync-products`);
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/sync-products`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                }
+            });
             displayAlert('Products synced successfully!', 'success');
             fetchProducts(currentPage);
         } catch (err) {
@@ -54,7 +64,12 @@ function App() {
         if (window.confirm('Are you sure you want to delete this product?')) {
             setLoading(true);
             try {
-                await axios.delete(`https://simple-tasks-be-production.up.railway.app/api/products/${id}`);
+                await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/api/products/${id}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    }
+                });
                 displayAlert('Product deleted successfully!', 'success');
                 fetchProducts(currentPage);
             } catch (err) {
@@ -84,7 +99,12 @@ function App() {
     const handleUpdateProduct = async () => {
         setLoading(true);
         try {
-            await axios.put(`https://simple-tasks-be-production.up.railway.app/api/products/${editingProduct.id}`, editingProduct);
+            await axios.put(`${import.meta.env.VITE_API_BASE_URL}/api/products/${editingProduct.id}`, editingProduct, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                }
+            });
             displayAlert('Product updated successfully!', 'success');
             handleCloseEditModal();
             fetchProducts(currentPage);
@@ -99,7 +119,12 @@ function App() {
     const handleCreateProduct = async () => {
         setLoading(true);
         try {
-            await axios.post(`https://simple-tasks-be-production.up.railway.app/api/products`, newProduct);
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/products`, newProduct, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                }
+            });
             displayAlert('Product created successfully!', 'success');
             setShowCreateModal(false);
             setNewProduct({ name: '', price: '', stock: '', description: '' });
